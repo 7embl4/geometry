@@ -79,14 +79,52 @@ std::vector<double> findPerpendicularThroughPoint(int a, int b, int c, const poi
 	return { a_perp, b_perp, c_perp };
 }
 
-double calcTriangleSurface(const point2& p1, const point2& p2, const point2& p3) {
-	vec2 v1 = p3 - p1;
-	vec2 v2 = p2 - p1;
-	return fabs(v1 % v2) / 2;
+float cross_product(const sf::Vector2f& v1, const sf::Vector2f& v2) {
+	return v1.x * v2.y - v2.x * v1.y;
 }
 
-int main() {
-	
+bool is_not_convex(
+	const sf::Vector2f& prelast_point, 
+	const sf::Vector2f& last_point, 
+	const sf::Vector2f& curr_point) 
+{
+	sf::Vector2f v1 = last_point - prelast_point;
+	sf::Vector2f v2 = curr_point - last_point;
+	return cross_product(v1, v2) < 0;
+}
 
-	return 0;
+std::vector<point2> convex_hull(std::vector<point2>& points) {
+	// Find the most left-down point
+	point2 p0 = points[0];
+	size_t p0_index = 0;
+	for (size_t i = 1; i != points.size(); ++i) {
+		if (points[i].x == p0.x && points[i].y > p0.y || points[i].x < p0.x) {
+			p0 = points[i];
+			p0_index = i;
+		}
+	}
+
+	// Erase p0 from vector of points, since we sort only other points.
+	// Sorting with p0 will break the algorithm
+	points.erase(points.begin() + p0_index);
+
+	// Sort points by angle relative to p0
+	std::sort(
+		points.begin(),
+		points.end(),
+		[&p0](const point2& p1, const point2& p2) {
+			return cross_product(p1 - p0, p2 - p0) > 0;
+		});
+
+	// Find convex hull
+	std::vector<point2> ans;
+	ans.push_back(p0);
+	for (size_t i = 0; i != points.size(); ++i) {
+		while (ans.size() > 1 && is_not_convex(ans[ans.size() - 2], ans[ans.size() - 1], points[i])) {
+			ans.pop_back();
+		}
+		ans.push_back(points[i]);
+	}
+
+	return ans;
 }
